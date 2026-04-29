@@ -1,0 +1,134 @@
+name: Build Cross-Platform Apps
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  # Build Main Scraper App
+  build-scraper:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+    
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Install Playwright browsers
+      run: npx playwright install chromium
+      
+    - name: Build for ${{ matrix.os }}
+      run: |
+        if [ "${{ matrix.os }}" = "windows-latest" ]; then
+          npm run build:win
+        else
+          npm run build:mac
+        fi
+      shell: bash
+      
+    - name: Upload Windows artifacts
+      if: matrix.os == 'windows-latest'
+      uses: actions/upload-artifact@v4
+      with:
+        name: scraper-windows
+        path: |
+          dist/*.exe
+          dist/*.zip
+        retention-days: 30
+        
+    - name: Upload macOS artifacts
+      if: matrix.os == 'macos-latest'
+      uses: actions/upload-artifact@v4
+      with:
+        name: scraper-macos
+        path: |
+          dist/*.dmg
+          dist/*.zip
+        retention-days: 30
+
+  # Build Keygen GUI
+  build-keygen:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+    
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: keygen-gui/package-lock.json
+        
+    - name: Install keygen dependencies
+      working-directory: keygen-gui
+      run: npm ci
+      
+    - name: Build keygen for ${{ matrix.os }}
+      working-directory: keygen-gui
+      run: |
+        if [ "${{ matrix.os }}" = "windows-latest" ]; then
+          npm run build:win
+        else
+          npm run build:mac
+        fi
+      shell: bash
+      
+    - name: Upload Windows keygen artifacts
+      if: matrix.os == 'windows-latest'
+      uses: actions/upload-artifact@v4
+      with:
+        name: keygen-windows
+        path: keygen-gui/dist/*.exe
+        retention-days: 30
+        
+    - name: Upload macOS keygen artifacts
+      if: matrix.os == 'macos-latest'
+      uses: actions/upload-artifact@v4
+      with:
+        name: keygen-macos
+        path: keygen-gui/dist/*.dmg
+        retention-days: 30
+
+  # Create Release (only on tags)
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build-scraper, build-keygen]
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          scraper-windows/**/*
+          scraper-macos/**/*
+          keygen-windows/**/*
+          keygen-macos/**/*
+        draft: false
+        prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

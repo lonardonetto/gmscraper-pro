@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;" />
+  <title>GMScraper Pro - Activation</title>
+  <link rel="stylesheet" href="styles/main.css" />
+</head>
+<body class="license-page">
+  <div class="titlebar" id="titlebar">
+    <div class="titlebar-drag" style="flex:1"></div>
+    <div class="titlebar-controls">
+      <button class="tc-btn tc-close" id="btn-close" title="Close">&#x2715;</button>
+    </div>
+  </div>
+
+  <div class="license-container">
+    <div class="license-logo">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="10" r="3" fill="#7c3aed"/>
+        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#7c3aed" opacity="0.2"/>
+        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="#7c3aed" stroke-width="1.5" fill="none"/>
+      </svg>
+    </div>
+    <h1 class="license-title">GMScraper Pro</h1>
+    <p class="license-subtitle">Enter your license key to activate</p>
+
+    <div class="license-form">
+      <div class="form-group">
+        <label>License Key</label>
+        <input type="text" id="license-key-input" class="form-input license-key-input"
+               placeholder="XXXX-XXXX-XXXX-XXXX" maxlength="64"
+               autocomplete="off" spellcheck="false" />
+      </div>
+      <div class="license-error" id="license-error" style="display:none"></div>
+      <button class="btn btn-primary btn-full" id="btn-activate" disabled>
+        <span id="activate-text">Activate</span>
+        <span id="activate-spinner" class="spinner" style="display:none"></span>
+      </button>
+    </div>
+
+    <div class="machine-id-wrap">
+      <span class="muted small">Machine ID: </span>
+      <span class="mono small" id="machine-id-display">Loading...</span>
+    </div>
+  </div>
+
+  <script src="scripts/license.js"></script>
+</body>
+</html>

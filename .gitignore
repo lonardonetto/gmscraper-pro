@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+license-server/.env
+license-server/licenses.db
+*.db
+build/icon.ico
+build/icon.png

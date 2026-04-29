@@ -1,0 +1,2 @@
+Place icon.ico and icon.png (256x256) in this folder before building.
+You can convert any PNG to ICO using: https://convertio.co/png-ico/

@@ -6,6 +6,7 @@ on:
     tags: [ 'v*' ]
   pull_request:
     branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
   # Build Main Scraper App
@@ -31,6 +32,11 @@ jobs:
       
     - name: Install Playwright browsers
       run: npx playwright install chromium
+      
+    - name: Setup environment for live server
+      run: |
+        echo "NODE_ENV=production" > .env
+        echo "LICENSE_SERVER_URL=https://testing.crmpk.com" >> .env
       
     - name: Build for ${{ matrix.os }}
       run: |
@@ -83,6 +89,11 @@ jobs:
     - name: Install keygen dependencies
       working-directory: keygen-gui
       run: npm ci
+      
+    - name: Setup keygen environment for live server
+      working-directory: keygen-gui
+      run: |
+        echo "LICENSE_SERVER_URL=https://testing.crmpk.com" > .env
       
     - name: Build keygen for ${{ matrix.os }}
       working-directory: keygen-gui

@@ -53,14 +53,8 @@
       "package.json"
     ],
     "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": ["x64"]
-        }
-      ],
-      "signAndEditExecutable": false,
-      "sign": null
+      "target": "nsis",
+      "icon": "build/icon.ico"
     },
     "mac": {
       "target": [

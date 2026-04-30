@@ -33,9 +33,7 @@
       "package.json"
     ],
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
-      "signAndEditExecutable": false,
-      "sign": null
+      "target": "nsis"
     },
     "mac": {
       "target": [
@@ -49,19 +47,7 @@
       "gatekeeperAssess": false
     },
     "dmg": {
-      "title": "GMScraper Keygen",
-      "contents": [
-        {
-          "x": 130,
-          "y": 220
-        },
-        {
-          "x": 410,
-          "y": 220,
-          "type": "link",
-          "path": "/Applications"
-        }
-      ]
+      "title": "GMScraper Keygen"
     },
     "nsis": {
       "oneClick": true,

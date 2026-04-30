@@ -54,26 +54,7 @@ jobs:
         security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k github_actions build.keychain
         
         # Create self-signed signing certificate
-        cat << EOF > cert.conf
-[ req ]
-default_bits = 2048
-distinguished_name = dn
-prompt = no
-string_mask = utf8only
-x509_extensions = ext
-
-[ dn ]
-countryName = US
-stateOrProvinceName = California
-localityName = San Francisco
-organizationName = GMScraper Pro
-commonName = GMScraper Pro Developer
-
-[ ext ]
-basicConstraints = CA:FALSE
-keyUsage = digitalSignature,keyEncipherment
-extendedKeyUsage = codeSigning
-EOF
+        printf '[ req ]\ndefault_bits = 2048\ndistinguished_name = dn\nprompt = no\nstring_mask = utf8only\nx509_extensions = ext\n\n[ dn ]\ncountryName = US\nstateOrProvinceName = California\nlocalityName = San Francisco\norganizationName = GMScraper Pro\ncommonName = GMScraper Pro Developer\n\n[ ext ]\nbasicConstraints = CA:FALSE\nkeyUsage = digitalSignature,keyEncipherment\nextendedKeyUsage = codeSigning\n' > cert.conf
         
         openssl req -x509 -newkey rsa:2048 -keyout signing_key.pem -out signing_cert.pem -days 365 -nodes -config cert.conf
         security import signing_cert.pem -k build.keychain -T /usr/bin/codesign
@@ -171,26 +152,7 @@ EOF
         security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k github_actions build.keychain
         
         # Create self-signed signing certificate
-        cat << EOF > cert.conf
-[ req ]
-default_bits = 2048
-distinguished_name = dn
-prompt = no
-string_mask = utf8only
-x509_extensions = ext
-
-[ dn ]
-countryName = US
-stateOrProvinceName = California
-localityName = San Francisco
-organizationName = GMScraper Pro
-commonName = GMScraper Pro Developer
-
-[ ext ]
-basicConstraints = CA:FALSE
-keyUsage = digitalSignature,keyEncipherment
-extendedKeyUsage = codeSigning
-EOF
+        printf '[ req ]\ndefault_bits = 2048\ndistinguished_name = dn\nprompt = no\nstring_mask = utf8only\nx509_extensions = ext\n\n[ dn ]\ncountryName = US\nstateOrProvinceName = California\nlocalityName = San Francisco\norganizationName = GMScraper Pro\ncommonName = GMScraper Pro Developer\n\n[ ext ]\nbasicConstraints = CA:FALSE\nkeyUsage = digitalSignature,keyEncipherment\nextendedKeyUsage = codeSigning\n' > cert.conf
         
         openssl req -x509 -newkey rsa:2048 -keyout signing_key.pem -out signing_cert.pem -days 365 -nodes -config cert.conf
         security import signing_cert.pem -k build.keychain -T /usr/bin/codesign

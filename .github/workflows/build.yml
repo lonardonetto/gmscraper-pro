@@ -43,25 +43,11 @@ jobs:
         echo "NODE_ENV=production" > .env
         echo "LICENSE_SERVER_URL=https://testing.crmpk.com" >> .env
       
-    - name: Create self-signed certificate for macOS
+    - name: Setup ad-hoc signing for macOS
       if: matrix.os == 'macos-latest'
       run: |
-        # Create self-signed certificate for code signing
-        security create-keychain -p github_actions build.keychain
-        security default-keychain -s build.keychain
-        security unlock-keychain -p github_actions build.keychain
-        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k github_actions build.keychain
-        
-        # Create self-signed signing certificate
-        printf '[ req ]\ndefault_bits = 2048\ndistinguished_name = dn\nprompt = no\nstring_mask = utf8only\nx509_extensions = ext\n\n[ dn ]\ncountryName = US\nstateOrProvinceName = California\nlocalityName = San Francisco\norganizationName = GMScraper Pro\ncommonName = GMScraper Pro Developer\n\n[ ext ]\nbasicConstraints = CA:FALSE\nkeyUsage = digitalSignature,keyEncipherment\nextendedKeyUsage = codeSigning\n' > cert.conf
-        
-        openssl req -x509 -newkey rsa:2048 -keyout signing_key.pem -out signing_cert.pem -days 365 -nodes -config cert.conf
-        security import signing_cert.pem -k build.keychain -T /usr/bin/codesign
-        security import signing_key.pem -k build.keychain -T /usr/bin/codesign
-        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k github_actions build.keychain
-        
-        # Use the certificate directly for signing
-        echo "SIGNING_IDENTITY=GMScraper Pro Developer" >> $GITHUB_ENV
+        # Use ad-hoc signing for macOS builds
+        echo "SIGNING_IDENTITY=-" >> $GITHUB_ENV
       shell: bash
 
     - name: Build for ${{ matrix.os }}
@@ -71,16 +57,16 @@ jobs:
         else
           npm run build:mac
           
-          # Sign the macOS app with self-signed certificate
+          # Sign the macOS app with ad-hoc signing
           if [ -f "dist/GMScraper Pro.app" ]; then
-            codesign --force --deep --sign "$SIGNING_IDENTITY" "dist/GMScraper Pro.app"
-            echo "Signed GMScraper Pro.app"
+            codesign --force --deep --sign - "dist/GMScraper Pro.app"
+            echo "Signed GMScraper Pro.app with ad-hoc signature"
           fi
           
           # Sign the DMG if it exists
           if [ -f "dist/*.dmg" ]; then
-            codesign --force --sign "$SIGNING_IDENTITY" dist/*.dmg
-            echo "Signed DMG file"
+            codesign --force --sign - dist/*.dmg
+            echo "Signed DMG file with ad-hoc signature"
           fi
         fi
       shell: bash
@@ -139,25 +125,11 @@ jobs:
       run: |
         echo "LICENSE_SERVER_URL=https://testing.crmpk.com" > .env
       
-    - name: Create self-signed certificate for macOS
+    - name: Setup ad-hoc signing for macOS
       if: matrix.os == 'macos-latest'
       run: |
-        # Create self-signed certificate for code signing
-        security create-keychain -p github_actions build.keychain
-        security default-keychain -s build.keychain
-        security unlock-keychain -p github_actions build.keychain
-        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k github_actions build.keychain
-        
-        # Create self-signed signing certificate
-        printf '[ req ]\ndefault_bits = 2048\ndistinguished_name = dn\nprompt = no\nstring_mask = utf8only\nx509_extensions = ext\n\n[ dn ]\ncountryName = US\nstateOrProvinceName = California\nlocalityName = San Francisco\norganizationName = GMScraper Pro\ncommonName = GMScraper Pro Developer\n\n[ ext ]\nbasicConstraints = CA:FALSE\nkeyUsage = digitalSignature,keyEncipherment\nextendedKeyUsage = codeSigning\n' > cert.conf
-        
-        openssl req -x509 -newkey rsa:2048 -keyout signing_key.pem -out signing_cert.pem -days 365 -nodes -config cert.conf
-        security import signing_cert.pem -k build.keychain -T /usr/bin/codesign
-        security import signing_key.pem -k build.keychain -T /usr/bin/codesign
-        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k github_actions build.keychain
-        
-        # Use the certificate directly for signing
-        echo "SIGNING_IDENTITY=GMScraper Pro Developer" >> $GITHUB_ENV
+        # Use ad-hoc signing for macOS builds
+        echo "SIGNING_IDENTITY=-" >> $GITHUB_ENV
       shell: bash
 
     - name: Build keygen for ${{ matrix.os }}
@@ -168,16 +140,16 @@ jobs:
         else
           npm run build:mac
           
-          # Sign the macOS app with self-signed certificate
+          # Sign the macOS app with ad-hoc signing
           if [ -f "dist/GMScraper Keygen.app" ]; then
-            codesign --force --deep --sign "$SIGNING_IDENTITY" "dist/GMScraper Keygen.app"
-            echo "Signed GMScraper Keygen.app"
+            codesign --force --deep --sign - "dist/GMScraper Keygen.app"
+            echo "Signed GMScraper Keygen.app with ad-hoc signature"
           fi
           
           # Sign the DMG if it exists
           if [ -f "dist/*.dmg" ]; then
-            codesign --force --sign "$SIGNING_IDENTITY" dist/*.dmg
-            echo "Signed DMG file"
+            codesign --force --sign - dist/*.dmg
+            echo "Signed DMG file with ad-hoc signature"
           fi
         fi
       shell: bash

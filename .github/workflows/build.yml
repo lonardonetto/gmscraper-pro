@@ -34,6 +34,7 @@ jobs:
       run: npx playwright install chromium
       
     - name: Remove icon files to fix Windows build
+      shell: bash
       run: |
         rm -f build/icon.ico build/icon.png build/icon.icns || true
         
@@ -96,6 +97,7 @@ jobs:
       
     - name: Remove icon files to fix keygen build
       working-directory: keygen-gui
+      shell: bash
       run: |
         rm -f build/icon.ico build/icon.png build/icon.icns || true
         

@@ -60,9 +60,8 @@ jobs:
         security import signing_key.pem -k build.keychain -T /usr/bin/codesign
         security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k github_actions build.keychain
         
-        # Create signing identity
-        SIGNING_IDENTITY=$(security find-identity -v -p codesigning build.keychain | head -1 | awk '{print $2}')
-        echo "SIGNING_IDENTITY=$SIGNING_IDENTITY" >> $GITHUB_ENV
+        # Use the certificate directly for signing
+        echo "SIGNING_IDENTITY=GMScraper Pro Developer" >> $GITHUB_ENV
       shell: bash
 
     - name: Build for ${{ matrix.os }}
@@ -157,9 +156,8 @@ jobs:
         security import signing_key.pem -k build.keychain -T /usr/bin/codesign
         security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k github_actions build.keychain
         
-        # Create signing identity
-        SIGNING_IDENTITY=$(security find-identity -v -p codesigning build.keychain | head -1 | awk '{print $2}')
-        echo "SIGNING_IDENTITY=$SIGNING_IDENTITY" >> $GITHUB_ENV
+        # Use the certificate directly for signing
+        echo "SIGNING_IDENTITY=GMScraper Pro Developer" >> $GITHUB_ENV
       shell: bash
 
     - name: Build keygen for ${{ matrix.os }}

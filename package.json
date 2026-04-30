@@ -70,16 +70,11 @@
         }
       ],
       "category": "public.app-category.productivity",
-      "icon": "build/icon.icns",
       "hardenedRuntime": false,
-      "gatekeeperAssess": false,
-      "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.plist"
+      "gatekeeperAssess": false
     },
     "dmg": {
       "title": "GMScraper Pro",
-      "icon": "build/icon.icns",
-      "background": "build/dmg-background.png",
       "contents": [
         {
           "x": 130,

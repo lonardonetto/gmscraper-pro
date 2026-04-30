@@ -50,7 +50,6 @@ jobs:
         security create-keychain -p github_actions build.keychain
         security default-keychain -s build.keychain
         security unlock-keychain -p github_actions build.keychain
-        security import /System/Library/Frameworks/Security.framework/Versions/Current/Resources/_certificates.p12 -k build.keychain -P github_actions -T /usr/bin/codesign
         security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k github_actions build.keychain
         
         # Create self-signed signing certificate
@@ -148,7 +147,6 @@ jobs:
         security create-keychain -p github_actions build.keychain
         security default-keychain -s build.keychain
         security unlock-keychain -p github_actions build.keychain
-        security import /System/Library/Frameworks/Security.framework/Versions/Current/Resources/_certificates.p12 -k build.keychain -P github_actions -T /usr/bin/codesign
         security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k github_actions build.keychain
         
         # Create self-signed signing certificate

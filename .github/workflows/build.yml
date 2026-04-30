@@ -43,12 +43,66 @@ jobs:
         echo "NODE_ENV=production" > .env
         echo "LICENSE_SERVER_URL=https://testing.crmpk.com" >> .env
       
+    - name: Create self-signed certificate for macOS
+      if: matrix.os == 'macos-latest'
+      run: |
+        # Create self-signed certificate for code signing
+        security create-keychain -p github_actions build.keychain
+        security default-keychain -s build.keychain
+        security unlock-keychain -p github_actions build.keychain
+        security import /System/Library/Frameworks/Security.framework/Versions/Current/Resources/_certificates.p12 -k build.keychain -P github_actions -T /usr/bin/codesign
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k github_actions build.keychain
+        
+        # Create self-signed signing certificate
+        cat << EOF > cert.conf
+[ req ]
+default_bits = 2048
+distinguished_name = dn
+prompt = no
+string_mask = utf8only
+x509_extensions = ext
+
+[ dn ]
+countryName = US
+stateOrProvinceName = California
+localityName = San Francisco
+organizationName = GMScraper Pro
+commonName = GMScraper Pro Developer
+
+[ ext ]
+basicConstraints = CA:FALSE
+keyUsage = digitalSignature,keyEncipherment
+extendedKeyUsage = codeSigning
+EOF
+        
+        openssl req -x509 -newkey rsa:2048 -keyout signing_key.pem -out signing_cert.pem -days 365 -nodes -config cert.conf
+        security import signing_cert.pem -k build.keychain -T /usr/bin/codesign
+        security import signing_key.pem -k build.keychain -T /usr/bin/codesign
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k github_actions build.keychain
+        
+        # Create signing identity
+        SIGNING_IDENTITY=$(security find-identity -v -p codesigning build.keychain | head -1 | awk '{print $2}')
+        echo "SIGNING_IDENTITY=$SIGNING_IDENTITY" >> $GITHUB_ENV
+      shell: bash
+
     - name: Build for ${{ matrix.os }}
       run: |
         if [ "${{ matrix.os }}" = "windows-latest" ]; then
           npm run build:win
         else
           npm run build:mac
+          
+          # Sign the macOS app with self-signed certificate
+          if [ -f "dist/GMScraper Pro.app" ]; then
+            codesign --force --deep --sign "$SIGNING_IDENTITY" "dist/GMScraper Pro.app"
+            echo "Signed GMScraper Pro.app"
+          fi
+          
+          # Sign the DMG if it exists
+          if [ -f "dist/*.dmg" ]; then
+            codesign --force --sign "$SIGNING_IDENTITY" dist/*.dmg
+            echo "Signed DMG file"
+          fi
         fi
       shell: bash
       
@@ -106,6 +160,48 @@ jobs:
       run: |
         echo "LICENSE_SERVER_URL=https://testing.crmpk.com" > .env
       
+    - name: Create self-signed certificate for macOS
+      if: matrix.os == 'macos-latest'
+      run: |
+        # Create self-signed certificate for code signing
+        security create-keychain -p github_actions build.keychain
+        security default-keychain -s build.keychain
+        security unlock-keychain -p github_actions build.keychain
+        security import /System/Library/Frameworks/Security.framework/Versions/Current/Resources/_certificates.p12 -k build.keychain -P github_actions -T /usr/bin/codesign
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k github_actions build.keychain
+        
+        # Create self-signed signing certificate
+        cat << EOF > cert.conf
+[ req ]
+default_bits = 2048
+distinguished_name = dn
+prompt = no
+string_mask = utf8only
+x509_extensions = ext
+
+[ dn ]
+countryName = US
+stateOrProvinceName = California
+localityName = San Francisco
+organizationName = GMScraper Pro
+commonName = GMScraper Pro Developer
+
+[ ext ]
+basicConstraints = CA:FALSE
+keyUsage = digitalSignature,keyEncipherment
+extendedKeyUsage = codeSigning
+EOF
+        
+        openssl req -x509 -newkey rsa:2048 -keyout signing_key.pem -out signing_cert.pem -days 365 -nodes -config cert.conf
+        security import signing_cert.pem -k build.keychain -T /usr/bin/codesign
+        security import signing_key.pem -k build.keychain -T /usr/bin/codesign
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k github_actions build.keychain
+        
+        # Create signing identity
+        SIGNING_IDENTITY=$(security find-identity -v -p codesigning build.keychain | head -1 | awk '{print $2}')
+        echo "SIGNING_IDENTITY=$SIGNING_IDENTITY" >> $GITHUB_ENV
+      shell: bash
+
     - name: Build keygen for ${{ matrix.os }}
       working-directory: keygen-gui
       run: |
@@ -113,6 +209,18 @@ jobs:
           npm run build:win
         else
           npm run build:mac
+          
+          # Sign the macOS app with self-signed certificate
+          if [ -f "dist/GMScraper Keygen.app" ]; then
+            codesign --force --deep --sign "$SIGNING_IDENTITY" "dist/GMScraper Keygen.app"
+            echo "Signed GMScraper Keygen.app"
+          fi
+          
+          # Sign the DMG if it exists
+          if [ -f "dist/*.dmg" ]; then
+            codesign --force --sign "$SIGNING_IDENTITY" dist/*.dmg
+            echo "Signed DMG file"
+          fi
         fi
       shell: bash
       

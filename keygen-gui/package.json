@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "sql.js": "^1.12.0",
-    "crypto-js": "^4.2.0"
+    "crypto-js": "^4.2.0",
+    "axios": "^1.6.0"
   },
   "devDependencies": {
     "electron": "^29.1.4",

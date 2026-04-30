@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path   = require('path');
 const fs     = require('fs');
 const CryptoJS = require('crypto-js');
+const axios = require('axios');
 
 // ── Encryption key (change before distributing to clients) ──────────────────
 const ENC_KEY = 'GMS-PRO-DB-SECRET-2024-xK9pZq7r';
@@ -21,6 +22,10 @@ function getHiddenDataDir() {
 
 // DB stored as encrypted binary — extension .dat looks innocuous
 let DB_PATH = null;
+
+// License server configuration
+const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://testing.crmpk.com';
+const ADMIN_SECRET = process.env.ADMIN_SECRET || 'change-this-admin-secret';
 
 // ── Encrypt/Decrypt helpers ─────────────────────────────────────────────────
 function encryptBuffer(buf) {
@@ -44,6 +49,34 @@ function decryptBuffer(encBuf) {
 let win = null;
 let db  = null;
 let SQL = null;
+
+// Sync license with server
+async function syncLicenseToServer(key, plan, maxActivations, expiresAt, notes) {
+  try {
+    const response = await axios.post(`${LICENSE_SERVER_URL}/api/admin/create-license`, {
+      plan,
+      maxActivations,
+      expiresAt,
+      notes
+    }, {
+      headers: {
+        'X-Admin-Secret': ADMIN_SECRET,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (response.data.success) {
+      console.log(`License ${key} synced to server successfully`);
+      return { success: true, serverKey: response.data.key };
+    } else {
+      console.error(`Failed to sync license ${key} to server:`, response.data);
+      return { success: false, error: response.data.message || 'Unknown error' };
+    }
+  } catch (error) {
+    console.error(`Error syncing license ${key} to server:`, error.message);
+    return { success: false, error: error.message };
+  }
+}
 
 async function initDb() {
   const dataDir = getHiddenDataDir();
@@ -159,18 +192,26 @@ ipcMain.handle('list-licenses', () => {
 });
 
 // ── IPC: generate keys ───────────────────────────────────────────────────────
-ipcMain.handle('generate-keys', (e, { count, plan, maxActivations, expiresAt, notes }) => {
+ipcMain.handle('generate-keys', async (e, { count, plan, maxActivations, expiresAt, notes }) => {
   if (!db) return { ok: false, error: 'DB not ready' };
   const keys = [];
+  const syncResults = [];
+  
   for (let i = 0; i < count; i++) {
     let attempts = 0;
     while (attempts < 10) {
       const key = generateKey();
       try {
+        // Save to local DB first
         db.run(
           'INSERT INTO licenses (key, plan, max_activations, expires_at, notes) VALUES (?, ?, ?, ?, ?)',
           [key, plan, maxActivations, expiresAt || null, notes || '']
         );
+        
+        // Try to sync with server
+        const syncResult = await syncLicenseToServer(key, plan, maxActivations, expiresAt, notes);
+        syncResults.push(syncResult);
+        
         keys.push(key);
         break;
       } catch (err) {
@@ -178,8 +219,21 @@ ipcMain.handle('generate-keys', (e, { count, plan, maxActivations, expiresAt, no
       }
     }
   }
+  
   saveDb();
-  return { ok: true, keys };
+  
+  // Check if any sync failed
+  const failedSyncs = syncResults.filter(r => !r.success);
+  if (failedSyncs.length > 0) {
+    return { 
+      ok: true, 
+      keys, 
+      warning: `${failedSyncs.length} licenses failed to sync to server. Check console for details.`,
+      syncResults 
+    };
+  }
+  
+  return { ok: true, keys, syncResults };
 });
 
 // ── IPC: delete license ──────────────────────────────────────────────────────

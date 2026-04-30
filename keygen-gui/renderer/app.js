@@ -100,7 +100,15 @@ async function generateKeys() {
   card.classList.add('show');
   card.scrollIntoView({ behavior: 'smooth' });
 
-  toast(`✅ Generated ${r.keys.length} key(s)`);
+  // Handle sync result messages
+  if (r.info) {
+    toast(`Generated ${r.keys.length} key(s) - ${r.info}`, 'info');
+  } else if (r.warning) {
+    toast(`Generated ${r.keys.length} key(s) - ${r.warning}`, 'warning');
+  } else {
+    toast(`Generated ${r.keys.length} key(s)`);
+  }
+  
   loadDashboard();
 }
 

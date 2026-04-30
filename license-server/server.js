@@ -2,15 +2,53 @@ require('dotenv').config();
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
-const rateLimit = require('express-rate-limit');
-const initSqlJs = require('sql.js');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const rateLimit = require('express-rate-limit');
+const initSqlJs = require('sql.js');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 const ADMIN_SECRET = process.env.ADMIN_SECRET || 'change-this-admin-secret';
 const DB_PATH = path.join(__dirname, 'licenses.db');
+
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
+      imgSrc: ["'self'", "data:", "https:"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      connectSrc: ["'self'"]
+    }
+  },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  }
+}));
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: { error: 'Too many requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // limit admin endpoints to 20 requests per windowMs
+  message: { error: 'Too many admin requests, please try again later' }
+});
+
+app.use('/api/', limiter);
+app.use('/api/admin/', adminLimiter);
 
 // ─── sql.js helpers ──────────────────────────────────────────────────────────
 let db = null;
@@ -70,16 +108,8 @@ async function initDb() {
 }
 
 // ─── Middleware ──────────────────────────────────────────────────────────────
-app.use(helmet());
 app.use(cors({ origin: '*' }));
 app.use(express.json());
-
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 30,
-  message: { valid: false, message: 'Too many requests. Try again later.' }
-});
-app.use('/api/license', limiter);
 
 // ─── Admin auth middleware ────────────────────────────────────────────────────
 function requireAdmin(req, res, next) {
@@ -216,11 +246,186 @@ function generateLicenseKey() {
   return `${segment(4)}-${segment(4)}-${segment(4)}-${segment(4)}`;
 }
 
+// Serve static files
+app.use(express.static('public'));
+
+// Dashboard page
+app.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
+// API: Get all licenses
+app.get('/api/admin/licenses', requireAdmin, (req, res) => {
+  try {
+    const licenses = db.prepare(`
+      SELECT 
+        l.key,
+        l.plan,
+        l.max_activations,
+        l.expires_at,
+        l.created_at,
+        l.notes,
+        COUNT(a.license_key) as activations
+      FROM licenses l
+      LEFT JOIN activations a ON l.key = a.license_key
+      GROUP BY l.key
+      ORDER BY l.created_at DESC
+    `).all();
+    
+    res.json({ licenses });
+  } catch (error) {
+    console.error('Error fetching licenses:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// API: Get license details with activations
+app.get('/api/admin/licenses/:key', requireAdmin, (req, res) => {
+  try {
+    const { key } = req.params;
+    
+    const license = db.prepare('SELECT * FROM licenses WHERE key = ?').get(key);
+    if (!license) {
+      return res.status(404).json({ error: 'License not found' });
+    }
+    
+    const activations = db.prepare(`
+      SELECT * FROM activations 
+      WHERE license_key = ? 
+      ORDER BY activated_at DESC
+    `).all(key);
+    
+    res.json({ license, activations });
+  } catch (error) {
+    console.error('Error fetching license details:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// API: Get statistics
+app.get('/api/admin/stats', requireAdmin, (req, res) => {
+  try {
+    const now = new Date().toISOString();
+    
+    const totalLicenses = db.prepare('SELECT COUNT(*) as count FROM licenses').get().count;
+    const activeLicenses = db.prepare('SELECT COUNT(*) as count FROM licenses l JOIN activations a ON l.key = a.license_key WHERE a.is_active = 1').get().count;
+    const totalActivations = db.prepare('SELECT COUNT(*) as count FROM activations WHERE is_active = 1').get().count;
+    const expiredLicenses = db.prepare('SELECT COUNT(*) as count FROM licenses WHERE expires_at < ?').get(now).count;
+    
+    res.json({
+      totalLicenses,
+      activeLicenses,
+      totalActivations,
+      expiredLicenses
+    });
+  } catch (error) {
+    console.error('Error fetching stats:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// API: Delete license
+app.delete('/api/admin/licenses/:key', requireAdmin, (req, res) => {
+  try {
+    const { key } = req.params;
+    
+    // Delete activations first
+    db.prepare('DELETE FROM activations WHERE license_key = ?').run(key);
+    
+    // Delete license
+    const result = db.prepare('DELETE FROM licenses WHERE key = ?').run(key);
+    
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'License not found' });
+    }
+    
+    persistDb();
+    res.json({ success: true, message: 'License deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting license:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// API: Deactivate specific activation
+app.post('/api/admin/deactivate', requireAdmin, (req, res) => {
+  try {
+    const { licenseKey, machineId } = req.body;
+    
+    if (!licenseKey || !machineId) {
+      return res.status(400).json({ error: 'License key and machine ID are required' });
+    }
+    
+    const result = db.prepare(`
+      UPDATE activations 
+      SET is_active = 0 
+      WHERE license_key = ? AND machine_id = ?
+    `).run(licenseKey, machineId);
+    
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Activation not found' });
+    }
+    
+    persistDb();
+    res.json({ success: true, message: 'Activation deactivated successfully' });
+  } catch (error) {
+    console.error('Error deactivating license:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// API: Export data
+app.get('/api/admin/export', requireAdmin, (req, res) => {
+  try {
+    const licenses = db.prepare(`
+      SELECT 
+        l.key,
+        l.plan,
+        l.max_activations,
+        l.expires_at,
+        l.created_at,
+        l.notes,
+        a.machine_id,
+        a.activated_at,
+        a.last_validated,
+        a.is_active
+      FROM licenses l
+      LEFT JOIN activations a ON l.key = a.license_key
+      ORDER BY l.created_at DESC, a.activated_at DESC
+    `).all();
+    
+    // Convert to CSV
+    const csv = [
+      'License Key,Plan,Max Activations,Expires At,Created At,Notes,Machine ID,Activated At,Last Validated,Is Active',
+      ...licenses.map(license => [
+        license.key,
+        license.plan,
+        license.max_activations,
+        license.expires_at || '',
+        license.created_at,
+        license.notes || '',
+        license.machine_id || '',
+        license.activated_at || '',
+        license.last_validated || '',
+        license.is_active || ''
+      ].join(','))
+    ].join('\n');
+    
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="licenses-export-${new Date().toISOString().split('T')[0]}.csv"`);
+    res.send(csv);
+  } catch (error) {
+    console.error('Error exporting data:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 initDb().then(() => {
   app.listen(PORT, () => {
     console.log(`\n🔑 GMScraper License Server running on port ${PORT}`);
     console.log(`   Admin Secret: ${ADMIN_SECRET}`);
-    console.log(`   Health check: http://localhost:${PORT}/health\n`);
+    console.log(`   Health check: http://localhost:${PORT}/health`);
+    console.log(`   Dashboard available at: http://localhost:${PORT}/dashboard\n`);
   });
 }).catch(err => {
   console.error('Failed to initialize database:', err);

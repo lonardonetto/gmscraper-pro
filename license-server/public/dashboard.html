@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>License Management Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .dashboard-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            margin: 20px auto;
+            max-width: 1400px;
+            padding: 30px;
+        }
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: transform 0.3s ease;
+        }
+        .stats-card:hover {
+            transform: translateY(-5px);
+        }
+        .license-table {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .table-hover tbody tr:hover {
+            background-color: rgba(102, 126, 234, 0.1);
+        }
+        .btn-action {
+            padding: 5px 10px;
+            font-size: 12px;
+            border-radius: 20px;
+        }
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status-inactive {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status-expired {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .search-box {
+            background: white;
+            border-radius: 25px;
+            padding: 10px 20px;
+            border: 2px solid #e3e6f0;
+            transition: border-color 0.3s ease;
+        }
+        .search-box:focus {
+            border-color: #667eea;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .header-title {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+            font-size: 2.5rem;
+        }
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        .modal-content {
+            border-radius: 15px;
+            border: none;
+        }
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px 15px 0 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="dashboard-container">
+            <!-- Header -->
+            <div class="text-center mb-4">
+                <h1 class="header-title">License Management Dashboard</h1>
+                <p class="text-muted">Manage licenses, activations, and monitor usage</p>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="stats-card">
+                        <h5>Total Licenses</h5>
+                        <h2 id="totalLicenses">-</h2>
+                        <i class="bi bi-key float-end"></i>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card">
+                        <h5>Active Licenses</h5>
+                        <h2 id="activeLicenses">-</h2>
+                        <i class="bi bi-check-circle float-end"></i>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card">
+                        <h5>Total Activations</h5>
+                        <h2 id="totalActivations">-</h2>
+                        <i class="bi bi-laptop float-end"></i>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card">
+                        <h5>Expired Licenses</h5>
+                        <h2 id="expiredLicenses">-</h2>
+                        <i class="bi bi-clock float-end"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search and Actions -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <input type="text" class="form-control search-box" id="searchInput" placeholder="Search licenses...">
+                </div>
+                <div class="col-md-6 text-end">
+                    <button class="btn btn-primary btn-sm me-2" onclick="refreshData()">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                    </button>
+                    <button class="btn btn-success btn-sm me-2" onclick="showCreateModal()">
+                        <i class="bi bi-plus-circle"></i> Create License
+                    </button>
+                    <button class="btn btn-warning btn-sm" onclick="exportData()">
+                        <i class="bi bi-download"></i> Export
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div class="loading-spinner" id="loadingSpinner">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+
+            <!-- Licenses Table -->
+            <div class="license-table">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>License Key</th>
+                            <th>Plan</th>
+                            <th>Status</th>
+                            <th>Activations</th>
+                            <th>Max Activations</th>
+                            <th>Expires</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="licensesTableBody">
+                        <!-- Licenses will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create License Modal -->
+    <div class="modal fade" id="createLicenseModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create New License</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createLicenseForm">
+                        <div class="mb-3">
+                            <label for="licensePlan" class="form-label">Plan</label>
+                            <select class="form-select" id="licensePlan" required>
+                                <option value="basic">Basic</option>
+                                <option value="pro">Pro</option>
+                                <option value="enterprise">Enterprise</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="maxActivations" class="form-label">Max Activations</label>
+                            <input type="number" class="form-control" id="maxActivations" value="1" min="1" max="10" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="expiresAt" class="form-label">Expires At (Optional)</label>
+                            <input type="datetime-local" class="form-control" id="expiresAt">
+                        </div>
+                        <div class="mb-3">
+                            <label for="licenseNotes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="licenseNotes" rows="3"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="createLicense()">Create License</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- License Details Modal -->
+    <div class="modal fade" id="licenseDetailsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">License Details</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="licenseDetails">
+                        <!-- License details will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="dashboard.js"></script>
+</body>
+</html>

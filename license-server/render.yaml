@@ -1,0 +1,14 @@
+services:
+  # License Server
+  - type: web
+    name: gmscraper-license-server
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: PORT
+        value: 3001
+      - key: ADMIN_SECRET
+        generateValue: true
+    healthCheckPath: /api/health

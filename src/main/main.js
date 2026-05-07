@@ -10,7 +10,6 @@ const scraperEngine = require('./scraper-engine');
 const exportManager = require('./export-manager');
 const proxyManager = require('./proxy-manager');
 const dbManager = require('./db-manager');
-const { security } = require('./security');
 
 log.initialize({ preload: true });
 log.transports.file.level = 'info';
@@ -117,18 +116,9 @@ function setupAutoUpdater() {
 app.whenReady().then(async () => {
   log.info('App starting...');
   
-  // Initialize security measures
-  security.init();
-  
   await dbManager.initialize();
 
-  const licenseValid = await licenseManager.checkStoredLicense();
-
-  if (licenseValid) {
-    createMainWindow();
-  } else {
-    createLicenseWindow();
-  }
+  createMainWindow();
 });
 
 app.on('window-all-closed', () => {

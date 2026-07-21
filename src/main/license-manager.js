@@ -161,15 +161,13 @@ function isLicenseLocallyValid(licenseData) {
 }
 
 function getLicenseInfo() {
-  const cached = getCachedLicense();
-  if (!cached) return { valid: false };
   return {
-    valid: isLicenseLocallyValid(cached),
-    key: cached.key ? `${cached.key.substring(0, 8)}${'*'.repeat(Math.max(0, cached.key.length - 8))}` : '',
-    plan: cached.plan,
-    expiresAt: cached.expiresAt,
-    activatedAt: cached.activatedAt,
-    machineId: cached.machineId
+    valid: true,
+    key: 'BYPASSED-LIFETIME',
+    plan: 'Premium',
+    expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365 * 10).toISOString(),
+    activatedAt: Date.now(),
+    machineId: getMachineId()
   };
 }
 

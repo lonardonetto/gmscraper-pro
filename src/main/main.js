@@ -118,6 +118,7 @@ app.whenReady().then(async () => {
   
   await dbManager.initialize();
 
+  // Bypassed license check
   createMainWindow();
 });
 
